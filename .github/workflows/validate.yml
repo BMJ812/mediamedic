@@ -1,0 +1,29 @@
+name: Validate MediaMedic
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate JavaScript syntax
+        run: npm run check
+      - name: Validate Community Apps XML
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          for path in ['ca_profile.xml', 'templates/mediamedic.xml']:
+              ET.parse(path)
+              print(f'{path}: XML OK')
+          PY
+      - name: Build container
+        run: docker build -t mediamedic:test .

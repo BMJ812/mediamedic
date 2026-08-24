@@ -1,0 +1,12 @@
+services:
+  mediamedic:
+    build: .
+    image: ghcr.io/bmj812/mediamedic:latest
+    container_name: mediamedic
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./config:/config
+    environment:
+      - MEDIAMEDIC_WEB_PORT=8787

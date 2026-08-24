@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MediaMedic</title>
+<style>
+:root{color-scheme:dark;--bg:#07070d;--panel:#121320;--panel2:#171828;--panel3:#0e0f19;--border:#2e3150;--text:#f6f4ff;--muted:#aaa7bf;--accent:#9f63ff;--accent2:#6d30ff;--ok:#2dd4bf;--bad:#fb7185;--warn:#fbbf24;--glow:rgba(159,99,255,.22)}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at top,#171133 0,#0a0b14 38%,#07070d 100%)}
+a{color:#cbb2ff}button,input{font:inherit}h1,h2,h3,h4,p{margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:26px 18px 44px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:16px}.brandmark{width:72px;height:72px;object-fit:contain;border-radius:18px;filter:drop-shadow(0 0 20px rgba(159,99,255,.25))}.brand h1{font-size:32px;font-weight:900;letter-spacing:-.02em}.brand p{color:var(--muted);margin-top:4px;font-size:18px}
+.top-actions{display:flex;align-items:center;gap:14px}.version{color:#dcd6f7;font-size:18px}.iconbtn,.tab,.btn{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1a1c2e,#11131f);color:var(--text);border-radius:14px;padding:12px 18px;cursor:pointer;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.iconbtn{display:flex;align-items:center;gap:8px}.btn.primary,.tab.active{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:#8c66ff;box-shadow:0 0 0 1px rgba(159,99,255,.15),0 10px 30px rgba(109,48,255,.24)}.btn.ghost{background:transparent}.btn.small{padding:8px 12px;border-radius:10px;font-size:14px}.btn:disabled{opacity:.55;cursor:not-allowed}
+.grid{display:grid;gap:16px}.status-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:linear-gradient(180deg,rgba(19,21,35,.94),rgba(13,14,24,.96));backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:22px;padding:18px 18px 20px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.status-card b{display:flex;align-items:center;gap:10px;font-size:20px;margin-bottom:10px}.status-card span{display:block;color:#ddd8ef;font-size:16px;line-height:1.5;word-break:break-word}.muted{color:var(--muted)}.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:#6b7280;box-shadow:0 0 12px rgba(255,255,255,.08)}.dot.ok{background:var(--ok);box-shadow:0 0 18px rgba(45,212,191,.5)}.dot.bad{background:var(--bad);box-shadow:0 0 18px rgba(251,113,133,.45)}.dot.warn{background:var(--warn);box-shadow:0 0 18px rgba(251,191,36,.45)}
+.tabs{display:flex;gap:10px;margin:18px 0 16px}.tab{padding:13px 22px;color:#d0cbe3}.section{display:none}.section.active{display:block}
+.hero{display:grid;grid-template-columns:1.5fr .85fr;gap:18px}.lead-title{font-size:26px;font-weight:900;margin-bottom:18px}.lead-text{color:#d7d1ea;font-size:16px;margin-bottom:22px}.actions{display:flex;gap:12px;flex-wrap:wrap}.notice{border:1px solid #6d5c1f;background:linear-gradient(180deg,rgba(80,60,0,.25),rgba(50,36,0,.25));border-radius:16px;padding:18px;color:#f6d96c;line-height:1.45}.notice.bad{border-color:#6b2332;background:linear-gradient(180deg,rgba(102,25,41,.22),rgba(52,15,24,.24));color:#fecdd3}.notice.good{border-color:#155e53;background:linear-gradient(180deg,rgba(6,78,59,.22),rgba(4,44,35,.24));color:#bbf7d0}.notice h4{margin-bottom:6px}
+.login{max-width:520px;margin:70px auto 0}.hidden{display:none!important}.toast{display:none;margin-top:14px;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:rgba(14,15,25,.95)}.toast.show{display:block}
+.panel-heading{margin-bottom:10px}.panel-heading h2{font-size:22px;font-weight:900}.panel-heading p{margin-top:6px;color:var(--muted)}
+.settings-layout{display:grid;grid-template-columns:1fr;gap:16px}.group{border:1px solid var(--border);border-radius:18px;background:linear-gradient(180deg,rgba(14,16,27,.82),rgba(10,11,18,.92));padding:18px}.group h3{font-size:19px;margin-bottom:14px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field.full{grid-column:1/-1}.field label{display:block;font-size:14px;font-weight:800;margin-bottom:7px}.field small{display:block;color:var(--muted);font-size:12px;margin-top:6px;line-height:1.4}.field input{width:100%;border:1px solid var(--border);background:#0c0d16;color:white;border-radius:14px;padding:13px 14px;outline:none}.field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}.secret{position:relative}.secret input{padding-right:84px}.show{position:absolute;right:8px;top:8px;border:1px solid var(--border);background:#231d38;color:#e2d7ff;border-radius:10px;padding:7px 10px;cursor:pointer}
+.switchrow{display:flex;justify-content:space-between;gap:18px;align-items:center}.switch{position:relative;width:54px;height:30px;flex:0 0 auto}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#383a4d;border-radius:999px;cursor:pointer;transition:.18s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:4px;top:4px;border-radius:50%;background:white;transition:.18s}.switch input:checked+.slider{background:#7c3aed}.switch input:checked+.slider:before{transform:translateX(24px)}
+.tests{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.test{border:1px solid var(--border);background:#0d0d14;border-radius:14px;padding:12px 14px}.test span{display:block;color:var(--muted);font-size:13px;margin-top:6px;word-break:break-word}
+.footer{text-align:center;color:#7f7895;font-size:13px;margin-top:24px}
+
+.wizard-shell{display:grid;grid-template-columns:320px 1fr;gap:18px}.wizard-side{display:flex;flex-direction:column;gap:16px}.wizard-brand{padding:22px}.wizard-logo-title{display:flex;align-items:flex-start;gap:14px}.wizard-logo-title img{width:180px;max-width:100%;height:auto;display:block}.wizard-brand p{margin-top:10px;color:var(--muted)}
+.steps{position:relative;padding-left:0}.step-link{display:flex;gap:14px;align-items:flex-start;padding:12px;border-radius:16px;border:1px solid transparent;cursor:pointer;transition:.15s}.step-link.active{border-color:#7d57db;background:linear-gradient(180deg,rgba(109,48,255,.20),rgba(109,48,255,.07))}.step-num{width:38px;height:38px;flex:0 0 auto;border-radius:999px;border:1px solid #5a5d7a;display:grid;place-items:center;font-weight:900;background:rgba(22,24,39,.9)}.step-link.active .step-num{border-color:#9f63ff;background:linear-gradient(135deg,#7c3aed,#a78bfa);box-shadow:0 0 18px rgba(159,99,255,.45)}.step-text b{display:block;font-size:18px;margin-bottom:2px}.step-text span{display:block;font-size:14px;color:var(--muted)}.why-box{margin-top:auto}
+.wizard-main .card{padding:22px}.step-badge{color:#c6a7ff;font-weight:800;margin-bottom:8px}.wizard-main h2{font-size:24px;margin-bottom:6px}.wizard-main .subtitle{color:var(--muted);margin-bottom:16px}.wizard-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.wizard-help .link-list{display:grid;gap:10px}.doclink{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border);background:#10121e;border-radius:14px;padding:14px 16px;color:#d4c8ff;text-decoration:none}.doclink small{display:block;color:var(--muted)}
+.wizard-step{display:none}.wizard-step.active{display:block}.wizard-actions{display:flex;justify-content:space-between;gap:12px;margin-top:18px}.wizard-summary{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px}.summary-pill{min-width:0;border:1px solid var(--border);border-radius:16px;background:#111321;padding:14px;display:flex;align-items:center;gap:12px}.summary-pill>div:last-child{min-width:0}.summary-icon{width:50px;height:50px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(167,139,250,.2));border:1px solid #593ea9;font-size:22px}.summary-pill b{display:block}.summary-pill span{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+.wizard-inline-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.tip{margin-top:14px;border:1px solid #6d5c1f;background:linear-gradient(180deg,rgba(80,60,0,.20),rgba(50,36,0,.18));padding:14px 16px;border-radius:14px;color:#f8e08a}
+
+.starter-kit{margin-top:20px}.starter-grid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:stretch}.starter-icon-card{border:1px solid var(--border);border-radius:18px;background:#0c0d16;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center}.starter-icon-card img{width:100%;max-width:190px;aspect-ratio:1/1;object-fit:cover;border-radius:28px;display:block;margin:0 auto 16px;background:#050509;filter:drop-shadow(0 0 22px rgba(159,99,255,.30))}.copyrow{display:flex;gap:9px;flex-wrap:wrap;width:100%;justify-content:center}.copyrow .btn{padding:9px 12px;border-radius:10px;font-size:13px;flex:1 1 88px}.starter-meta{display:grid;gap:12px;min-width:0}.profile-name-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}.profile-name-row .btn{white-space:nowrap}.copy-field{border:1px solid var(--border);border-radius:14px;background:#0c0d16;padding:13px 14px;margin-bottom:12px}.copy-field-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.copy-field-head b{font-size:14px}.copy-value{color:#e8e4f5;white-space:pre-wrap;word-break:break-word;line-height:1.55}.tag-list{display:flex;gap:8px;flex-wrap:wrap}.tag-chip{border:1px solid #5a3ba4;background:rgba(124,58,237,.16);color:#e5d8ff;border-radius:999px;padding:7px 11px;cursor:pointer;font-weight:700;font-size:13px}.tag-chip:hover{background:rgba(124,58,237,.28)}.kit-note{color:var(--muted);font-size:12px;margin-top:8px}.inline-status{color:#cfc4ee;font-size:12px;margin-top:9px;min-height:18px}
+@media(max-width:1100px){.status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wizard-shell{grid-template-columns:1fr}}
+@media(max-width:820px){.hero,.wizard-grid,.form-grid,.starter-grid,.profile-name-row{grid-template-columns:1fr}.brand h1{font-size:28px}.brand p{font-size:16px}.brandmark{width:60px;height:60px}.field.full{grid-column:auto}}
+@media(max-width:580px){.wrap{padding:16px 12px 32px}.top{flex-direction:column}.status-grid,.tests,.wizard-summary{grid-template-columns:1fr}.tabs{flex-wrap:wrap}.tab,.btn,.iconbtn{width:100%;justify-content:center}.actions .btn{width:100%}.wizard-actions{flex-direction:column-reverse}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <img class="brandmark" src="/logo-icon.png" alt="MediaMedic logo">
+      <div>
+        <h1>MediaMedic</h1>
+        <p>Discord media repair for Radarr + Sonarr</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="helpDocsBtn" class="iconbtn" type="button">❔ Help &amp; Docs</button>
+      <div class="version" id="version">v0.4.2</div>
+    </div>
+  </div>
+
+  <div id="loginView" class="card login hidden">
+    <div class="panel-heading"><h2>Web UI Login</h2><p>Enter your MediaMedic Web UI password.</p></div>
+    <form id="loginForm">
+      <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+      <div class="actions" style="margin-top:16px"><button class="btn primary">Sign in</button></div>
+      <div id="loginError" class="toast"></div>
+    </form>
+  </div>
+
+  <div id="appView" class="hidden">
+    <div class="grid status-grid">
+      <div class="card status-card"><b><i id="discordDot" class="dot"></i>Discord</b><span id="discordStatus">Checking…</span></div>
+      <div class="card status-card"><b><i id="radarrDot" class="dot"></i>Radarr</b><span id="radarrStatus">Checking…</span></div>
+      <div class="card status-card"><b><i id="sonarrDot" class="dot"></i>Sonarr</b><span id="sonarrStatus">Checking…</span></div>
+      <div class="card status-card"><b><i id="safetyDot" class="dot warn"></i>Safety</b><span id="safetyStatus">DRY RUN</span></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard" type="button">Dashboard</button>
+      <button class="tab" data-tab="wizard" type="button">Discord App Wizard</button>
+      <button class="tab" data-tab="settings" type="button">Settings</button>
+    </div>
+
+    <section id="dashboard" class="section active">
+      <div class="hero">
+        <div class="card">
+          <h2 id="heroTitle" class="lead-title">MediaMedic status</h2>
+          <p id="heroText" class="lead-text">Checking the bot and service connections.</p>
+          <div class="actions"><button id="refreshBtn" class="btn primary" type="button">Refresh status</button><button id="openSettings" class="btn" type="button">Open settings</button><button id="openWizard" class="btn ghost" type="button">Open wizard</button></div>
+        </div>
+        <div class="card">
+          <h2 style="font-size:18px;font-weight:900;margin-bottom:12px">Bot process</h2>
+          <p id="botState" class="lead-text" style="margin-bottom:14px">Loading…</p>
+          <div class="notice"><h4>Repair tracking</h4><div>Live repairs post a Discord status card, refresh download progress about every 15 seconds, and notify the requester after import. Tracking resumes after bot/container restarts.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="wizard" class="section">
+      <div class="wizard-shell">
+        <div class="wizard-side card wizard-brand">
+          <div class="wizard-logo-title"><img src="/logo-full.png" alt="MediaMedic"></div>
+          <p>Follow these simple steps to connect MediaMedic to Discord, collect the right IDs, and save everything in one place.</p>
+          <div class="steps">
+            <div class="step-link active" data-step="1"><div class="step-num">1</div><div class="step-text"><b>Create Discord Application</b><span>Create your app in the Discord Developer Portal.</span></div></div>
+            <div class="step-link" data-step="2"><div class="step-num">2</div><div class="step-text"><b>Bot Setup</b><span>Configure your bot's basic information.</span></div></div>
+            <div class="step-link" data-step="3"><div class="step-num">3</div><div class="step-text"><b>Permissions</b><span>Choose the permissions your bot needs.</span></div></div>
+            <div class="step-link" data-step="4"><div class="step-num">4</div><div class="step-text"><b>Server &amp; Channel IDs</b><span>Provide your server, channel, and role IDs.</span></div></div>
+            <div class="step-link" data-step="5"><div class="step-num">5</div><div class="step-text"><b>Tokens &amp; API Keys</b><span>Add your bot token and *arr API keys.</span></div></div>
+            <div class="step-link" data-step="6"><div class="step-num">6</div><div class="step-text"><b>Validate &amp; Finish</b><span>Test connections and save your setup.</span></div></div>
+          </div>
+          <div class="group why-box">
+            <h3 style="margin-bottom:8px">Why this wizard?</h3>
+            <p class="muted">This wizard walks users through the Discord setup in the correct order so they can get MediaMedic connected quickly and with fewer mistakes.</p>
+          </div>
+        </div>
+
+        <div class="wizard-main">
+          <div class="card wizard-step active" data-step="1">
+            <div class="step-badge">Step 1 of 6</div>
+            <h2>Create Discord Application</h2>
+            <p class="subtitle">Create a new application in the Discord Developer Portal. Once it exists, copy the Application ID into MediaMedic.</p>
+            <div class="wizard-grid">
+              <div class="group">
+                <h3>Create a New Application</h3>
+                <ol class="muted" style="padding-left:20px;line-height:1.7">
+                  <li>Open the Discord Developer Portal.</li>
+                  <li>Click <b>New Application</b>.</li>
+                  <li>Name the application <b>MediaMedic</b> or any name you'll recognize.</li>
+                </ol>
+                <div class="profile-name-row" style="margin-top:14px"><div class="field"><label>Suggested Application Name</label><input id="starterAppName" value="MediaMedic" readonly></div><button id="copyNameBtn" class="btn" type="button">Copy name</button></div><div id="nameCopyStatus" class="inline-status"></div>
+                <div class="notice good" style="margin-top:16px"><h4>Created your application?</h4><div>Copy the <b>Application ID</b> from <b>General Information</b> and paste it below.</div></div>
+                <div class="field" style="margin-top:14px"><label>Application / Client ID</label><input id="wiz_discordClientId" data-sync="discordClientId" inputmode="numeric" placeholder="123456789012345678"></div>
+              </div>
+              <div class="group wizard-help">
+                <h3>Need help?</h3>
+                <div class="link-list">
+                  <a class="doclink" href="https://discord.com/developers/applications" target="_blank" rel="noopener"><div><b>Open Developer Portal</b><small>Start here</small></div><span>↗</span></a>
+                  <a class="doclink" href="https://discord.com/developers/docs/quick-start/getting-started" target="_blank" rel="noopener"><div><b>Discord Developer Docs</b><small>Official getting started guide</small></div><span>↗</span></a>
+                  <a class="doclink" href="https://discord.com/developers/docs/topics/oauth2" target="_blank" rel="noopener"><div><b>OAuth2 Docs</b><small>For install and permissions</small></div><span>↗</span></a>
+                </div>
+                <div class="tip">Keep this tab open — you'll jump back and forth between Discord and MediaMedic while you complete the steps.</div>
+              </div>
+            </div>
+
+            <div class="group starter-kit">
+              <h3>Discord App Profile Starter Kit</h3>
+              <p class="muted" style="margin-bottom:14px">These are optional, but they make the Discord application look finished immediately. Use the icon, description, and up to five tags in <b>General Information</b>.</p>
+              <div class="starter-grid">
+                <div class="starter-icon-card">
+                  <img id="starterIcon" src="/logo-icon.png" alt="MediaMedic Discord app icon">
+                  <div class="copyrow">
+                    <button id="copyIconBtn" class="btn primary" type="button">Copy icon</button>
+                    <a class="btn" href="/logo-icon.png" download="MediaMedic-Discord-Icon.png" style="text-decoration:none">Download</a>
+                  </div>
+                  <div id="iconCopyStatus" class="inline-status"></div>
+                  <div class="kit-note">1024×1024 square PNG — ready for Discord.</div>
+                </div>
+                <div class="starter-meta">
+                  <div class="copy-field">
+                    <div class="copy-field-head"><b>Description</b><button id="copyDescriptionBtn" class="btn small" type="button">Copy description</button></div>
+                    <div id="starterDescription" class="copy-value">MediaMedic is a Discord-based media repair assistant for Radarr and Sonarr. Users can report broken or incorrect movie and TV files, safely confirm repairs, blocklist bad releases, remove managed files, trigger replacement searches, and track downloads through import.</div>
+                    <div class="kit-note">Discord allows up to 400 characters for the application description.</div>
+                  </div>
+                  <div class="copy-field">
+                    <div class="copy-field-head"><b>Tags <span class="muted">(optional)</span></b><button id="copyTagsBtn" class="btn small" type="button">Copy all tags</button></div>
+                    <div id="starterTags" class="tag-list">
+                      <button class="tag-chip" type="button" data-tag="media">media</button>
+                      <button class="tag-chip" type="button" data-tag="automation">automation</button>
+                      <button class="tag-chip" type="button" data-tag="discord">discord</button>
+                      <button class="tag-chip" type="button" data-tag="sonarr">sonarr</button>
+                      <button class="tag-chip" type="button" data-tag="radarr">radarr</button>
+                    </div>
+                    <div class="kit-note">Click an individual tag to copy it, or use Copy all tags.</div>
+                  </div>
+                  <div id="starterCopyStatus" class="inline-status"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="wizard-actions"><div></div><button class="btn primary" type="button" data-next="2">Next step →</button></div>
+          </div>
+
+          <div class="card wizard-step" data-step="2">
+            <div class="step-badge">Step 2 of 6</div>
+            <h2>Bot Setup</h2>
+            <p class="subtitle">Turn the application into a bot user and copy the bot token into MediaMedic.</p>
+            <div class="wizard-grid">
+              <div class="group">
+                <h3>Bot tab checklist</h3>
+                <ol class="muted" style="padding-left:20px;line-height:1.7">
+                  <li>Open the <b>Bot</b> section in the Developer Portal.</li>
+                  <li>Create the bot if Discord prompts you.</li>
+                  <li>Use <b>Reset Token</b> or <b>Copy</b> to get the bot token.</li>
+                  <li>Paste the token below. Keep it secret.</li>
+                </ol>
+                <div class="field" style="margin-top:14px"><label>Bot Token</label><div class="secret"><input id="wiz_discordToken" data-sync="discordToken" type="password" placeholder="Paste Discord bot token"><button class="show" type="button" data-show="wiz_discordToken">Show</button></div><small>Discord Developer Portal → Bot → Token</small></div>
+              </div>
+              <div class="group">
+                <h3>Recommended bot settings</h3>
+                <div class="notice"><div><b>Use the defaults unless you know you need something else.</b> MediaMedic does not need elevated intents for its current slash-command workflow.</div></div>
+                <div class="tip" style="margin-top:16px">After the bot exists, you can continue into OAuth2/installation from Discord. MediaMedic's bot token is the only Discord secret you store here.</div>
+              </div>
+            </div>
+            <div class="wizard-actions"><button class="btn" type="button" data-prev="1">← Back</button><button class="btn primary" type="button" data-next="3">Next step →</button></div>
+          </div>
+
+          <div class="card wizard-step" data-step="3">
+            <div class="step-badge">Step 3 of 6</div>
+            <h2>Permissions</h2>
+            <p class="subtitle">Install the app to your server and make sure the bot can post its repair tracking cards in your issue channel.</p>
+            <div class="wizard-grid">
+              <div class="group">
+                <h3>What MediaMedic needs</h3>
+                <div class="notice good">
+                  <div><b>Application command scope</b> — install the app to your server so slash commands work.</div>
+                  <div style="margin-top:8px"><b>Channel permissions in your issue channel</b>:</div>
+                  <ul style="margin:8px 0 0 18px;line-height:1.7">
+                    <li>View Channel</li>
+                    <li>Send Messages</li>
+                    <li>Embed Links</li>
+                    <li>Read Message History</li>
+                  </ul>
+                </div>
+                <div class="tip">You do <b>not</b> need Administrator for MediaMedic. Keep permissions narrow.</div>
+              </div>
+              <div class="group">
+                <h3>Quick setup reminders</h3>
+                <ol class="muted" style="padding-left:20px;line-height:1.7">
+                  <li>Install the bot to the correct Discord server.</li>
+                  <li>Restrict the slash commands to your desired issue channel if you want tighter control.</li>
+                  <li>Also give the bot normal channel permissions in that same issue channel.</li>
+                </ol>
+              </div>
+            </div>
+            <div class="wizard-actions"><button class="btn" type="button" data-prev="2">← Back</button><button class="btn primary" type="button" data-next="4">Next step →</button></div>
+          </div>
+
+          <div class="card wizard-step" data-step="4">
+            <div class="step-badge">Step 4 of 6</div>
+            <h2>Server &amp; Channel IDs</h2>
+            <p class="subtitle">Paste the IDs that tell MediaMedic where it belongs and who can use it.</p>
+            <div class="group">
+              <div class="form-grid">
+                <div class="field"><label>Server / Guild ID</label><input id="wiz_discordGuildId" data-sync="discordGuildId" inputmode="numeric" placeholder="Your Discord server ID"><small>Enable Developer Mode in Discord, then right-click the server and choose <b>Copy Server ID</b>.</small></div>
+                <div class="field"><label>Allowed Channel ID</label><input id="wiz_allowedChannelId" data-sync="allowedChannelId" inputmode="numeric" placeholder="Issue channel ID"><small>Right-click the issue channel and choose <b>Copy Channel ID</b>.</small></div>
+                <div class="field"><label>Repair Role ID <span class="muted">(optional)</span></label><input id="wiz_repairRoleId" data-sync="repairRoleId" inputmode="numeric" placeholder="Role allowed to use repairs"><small>Leave blank if you want to rely on Discord admins during initial testing.</small></div>
+                <div class="field"><label>Admin Role ID <span class="muted">(optional)</span></label><input id="wiz_adminRoleId" data-sync="adminRoleId" inputmode="numeric" placeholder="Optional extra admin role"><small>Discord server administrators remain allowed even without this value.</small></div>
+              </div>
+            </div>
+            <div class="wizard-actions"><button class="btn" type="button" data-prev="3">← Back</button><button class="btn primary" type="button" data-next="5">Next step →</button></div>
+          </div>
+
+          <div class="card wizard-step" data-step="5">
+            <div class="step-badge">Step 5 of 6</div>
+            <h2>Tokens &amp; API Keys</h2>
+            <p class="subtitle">Add the Radarr and Sonarr connections that let MediaMedic verify, remove, and replace bad files.</p>
+            <div class="group">
+              <div class="form-grid">
+                <div class="field"><label>Radarr URL</label><input id="wiz_radarrUrl" data-sync="radarrUrl" placeholder="http://192.168.0.15:7878"></div>
+                <div class="field"><label>Radarr API Key</label><div class="secret"><input id="wiz_radarrApiKey" data-sync="radarrApiKey" type="password" placeholder="Paste Radarr API key"><button class="show" type="button" data-show="wiz_radarrApiKey">Show</button></div><small>Radarr → Settings → General → Security → API Key</small></div>
+                <div class="field"><label>Sonarr URL</label><input id="wiz_sonarrUrl" data-sync="sonarrUrl" placeholder="http://192.168.0.15:8989"></div>
+                <div class="field"><label>Sonarr API Key</label><div class="secret"><input id="wiz_sonarrApiKey" data-sync="sonarrApiKey" type="password" placeholder="Paste Sonarr API key"><button class="show" type="button" data-show="wiz_sonarrApiKey">Show</button></div><small>Sonarr → Settings → General → Security → API Key</small></div>
+              </div>
+            </div>
+            <div class="wizard-actions"><button class="btn" type="button" data-prev="4">← Back</button><button class="btn primary" type="button" data-next="6">Next step →</button></div>
+          </div>
+
+          <div class="card wizard-step" data-step="6">
+            <div class="step-badge">Step 6 of 6</div>
+            <h2>Validate &amp; Finish</h2>
+            <p class="subtitle">Set your Web UI password, keep Dry Run enabled for initial testing, test the connections, and save.</p>
+            <div class="wizard-grid">
+              <div class="group">
+                <div class="field"><label>Web UI password</label><input id="wiz_uiPassword" data-sync="uiPassword" type="password" placeholder="Create a Web UI password"><small>Minimum 10 characters on first setup. Leave blank later unless you are changing it.</small></div>
+                <div class="group" style="margin-top:14px;padding:16px">
+                  <div class="switchrow">
+                    <div><b>Dry Run</b><div class="muted" style="margin-top:4px">Recommended for first-time testing.</div></div>
+                    <label class="switch"><input id="wiz_dryRun" data-sync-check="dryRun" type="checkbox" checked><span class="slider"></span></label>
+                  </div>
+                  <div id="wiz_liveBox" class="notice bad hidden" style="margin-top:14px"><h4>LIVE mode confirmation</h4><div>Type <b>LIVE</b> below before saving with Dry Run disabled.</div><div class="field" style="margin-top:10px"><input id="wiz_liveConfirm" data-sync="liveConfirm" placeholder="Type LIVE to enable deletion"></div></div>
+                </div>
+                <div class="wizard-inline-actions">
+                  <button id="wizardTestBtn" class="btn" type="button">Test connections</button>
+                  <button id="wizardSaveBtn" class="btn primary" type="button">Save &amp; restart bot</button>
+                  <button id="wizardOpenAdvanced" class="btn ghost" type="button">Open advanced settings</button>
+                </div>
+                <div id="wizardToast" class="toast"></div>
+                <div id="wizardTestResults" class="grid tests hidden"></div>
+              </div>
+              <div class="group">
+                <h3>What you'll create</h3>
+                <div class="wizard-summary">
+                  <div class="summary-pill"><div class="summary-icon">🤖</div><div><b>A Discord Bot</b><span>Your bot user to run inside your server.</span></div></div>
+                  <div class="summary-pill"><div class="summary-icon">🛡️</div><div><b>Permissions Set</b><span>The right permissions for MediaMedic.</span></div></div>
+                  <div class="summary-pill"><div class="summary-icon">#</div><div><b>Channel Connected</b><span>MediaMedic will post updates and alerts.</span></div></div>
+                  <div class="summary-pill"><div class="summary-icon">🔑</div><div><b>Securely Stored</b><span>Tokens are saved on the server and not returned.</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="wizard-actions"><button class="btn" type="button" data-prev="5">← Back</button><div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" class="section">
+      <div class="card">
+        <div class="panel-heading"><h2>Setup &amp; Connections</h2><p>Advanced all-in-one editor. The wizard updates these same settings behind the scenes.</p></div>
+        <form id="settingsForm">
+          <div class="settings-layout">
+            <div class="group">
+              <h3>Web UI Security</h3>
+              <div class="field"><label>Web UI password</label><input id="uiPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password"><small id="passwordHint">Minimum 10 characters. Required on first setup.</small></div>
+            </div>
+
+            <div class="group">
+              <h3>Discord</h3>
+              <div class="form-grid">
+                <div class="field"><label>Application / Client ID</label><input id="discordClientId" inputmode="numeric" required></div>
+                <div class="field"><label>Server / Guild ID</label><input id="discordGuildId" inputmode="numeric" required></div>
+                <div class="field full"><label>Bot Token</label><div class="secret"><input id="discordToken" type="password" autocomplete="off"><button class="show" type="button" data-show="discordToken">Show</button></div><small id="discordTokenHint">Discord Developer Portal → Bot → Token</small></div>
+                <div class="field"><label>Admin Role ID <span class="muted">(optional)</span></label><input id="adminRoleId" inputmode="numeric"><small>Discord Administrators remain allowed.</small></div>
+                <div class="field"><label>Repair Role ID <span class="muted">(optional)</span></label><input id="repairRoleId" inputmode="numeric"><small>Leave blank during initial testing.</small></div>
+                <div class="field full"><label>Allowed Channel ID <span class="muted">(recommended)</span></label><input id="allowedChannelId" inputmode="numeric" placeholder="Example: issue channel ID"><small>Commands, autocomplete, and confirmation buttons will only work in this channel. Leave blank to allow all channels in the configured server.</small></div>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Radarr</h3>
+              <div class="form-grid">
+                <div class="field"><label>Radarr URL</label><input id="radarrUrl" placeholder="http://192.168.0.15:7878" required></div>
+                <div class="field"><label>API Key</label><div class="secret"><input id="radarrApiKey" type="password" autocomplete="off"><button class="show" type="button" data-show="radarrApiKey">Show</button></div><small>Settings → General → Security → API Key</small></div>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Sonarr</h3>
+              <div class="form-grid">
+                <div class="field"><label>Sonarr URL</label><input id="sonarrUrl" placeholder="http://192.168.0.15:8989" required></div>
+                <div class="field"><label>API Key</label><div class="secret"><input id="sonarrApiKey" type="password" autocomplete="off"><button class="show" type="button" data-show="sonarrApiKey">Show</button></div><small>Settings → General → Security → API Key</small></div>
+              </div>
+            </div>
+
+            <div class="group">
+              <h3>Repair Safety</h3>
+              <div class="switchrow"><div><b>Dry Run</b><div class="muted" style="margin-top:4px">Verify repairs without deleting files or launching searches.</div></div><label class="switch"><input id="dryRun" type="checkbox" checked><span class="slider"></span></label></div>
+              <div id="liveBox" class="notice bad hidden" style="margin-top:14px"><h4>LIVE mode confirmation</h4><div>Type <b>LIVE</b> below to acknowledge that MediaMedic will delete managed media files and trigger replacement searches.</div><div class="field" style="margin-top:10px"><input id="liveConfirm" placeholder="Type LIVE to enable deletion"></div></div>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:18px"><button id="testBtn" class="btn" type="button">Test connections</button><button id="saveBtn" class="btn primary">Save &amp; restart bot</button><button id="logoutBtn" class="btn ghost" type="button">Sign out</button></div>
+          <div id="formToast" class="toast"></div>
+          <div id="testResults" class="grid tests hidden"></div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer" id="footerText">MediaMedic v0.4.2 · Web UI port 8787</div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const loginView=$('#loginView'),appView=$('#appView');
+let currentWizardStep=1;
+const syncPairs=[['uiPassword','wiz_uiPassword'],['discordClientId','wiz_discordClientId'],['discordGuildId','wiz_discordGuildId'],['discordToken','wiz_discordToken'],['adminRoleId','wiz_adminRoleId'],['repairRoleId','wiz_repairRoleId'],['allowedChannelId','wiz_allowedChannelId'],['radarrUrl','wiz_radarrUrl'],['radarrApiKey','wiz_radarrApiKey'],['sonarrUrl','wiz_sonarrUrl'],['sonarrApiKey','wiz_sonarrApiKey'],['liveConfirm','wiz_liveConfirm']];
+const syncChecks=[['dryRun','wiz_dryRun']];
+async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json',...(opts.headers||{})},...opts});const j=await r.json().catch(()=>({ok:false,error:'Invalid response'}));if(!r.ok)throw new Error(j.error||`Request failed (${r.status})`);return j}
+function tab(name){$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.section').forEach(s=>s.classList.toggle('active',s.id===name));localStorage.setItem('mediamedic.tab',name)}
+function esc(s){return String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function toast(el,msg,bad=false){el.innerHTML=esc(msg);el.className='toast show'+(bad?' notice bad':'')}
+function dot(id,ok){$(id).className='dot '+(ok?'ok':'bad')}
+function setDryRunState(value){$('#dryRun').checked=value;$('#wiz_dryRun').checked=value;$('#liveBox').classList.toggle('hidden',value);$('#wiz_liveBox').classList.toggle('hidden',value)}
+function bindSync(){for(const [a,b] of syncPairs){const A=$('#'+a),B=$('#'+b);if(!A||!B)continue;let busy=false;const fn=(src,dst)=>()=>{if(busy)return;busy=true;dst.value=src.value;busy=false};A.addEventListener('input',fn(A,B));B.addEventListener('input',fn(B,A))}for(const [a,b] of syncChecks){const A=$('#'+a),B=$('#'+b);if(!A||!B)continue;let busy=false;const fn=(src,dst)=>()=>{if(busy)return;busy=true;dst.checked=src.checked;setDryRunState(src.checked);busy=false};A.addEventListener('change',fn(A,B));B.addEventListener('change',fn(B,A))}}
+function syncToWizard(){for(const [a,b] of syncPairs){const A=$('#'+a),B=$('#'+b);if(A&&B)B.value=A.value}for(const [a,b] of syncChecks){const A=$('#'+a),B=$('#'+b);if(A&&B)B.checked=A.checked}setDryRunState($('#dryRun').checked)}
+function payload(){return{uiPassword:$('#uiPassword').value,discordClientId:$('#discordClientId').value.trim(),discordGuildId:$('#discordGuildId').value.trim(),discordToken:$('#discordToken').value.trim(),adminRoleId:$('#adminRoleId').value.trim(),repairRoleId:$('#repairRoleId').value.trim(),allowedChannelId:$('#allowedChannelId').value.trim(),radarrUrl:$('#radarrUrl').value.trim(),radarrApiKey:$('#radarrApiKey').value.trim(),sonarrUrl:$('#sonarrUrl').value.trim(),sonarrApiKey:$('#sonarrApiKey').value.trim(),dryRun:$('#dryRun').checked,liveConfirm:$('#liveConfirm').value.trim()}}
+function renderTests(target,results){target.classList.remove('hidden');target.innerHTML=['discord','radarr','sonarr'].map(k=>{const x=results[k];return `<div class="test"><b>${x.ok?'✓':'✕'} ${k[0].toUpperCase()+k.slice(1)}</b><span>${esc(x.detail)}</span></div>`}).join('')}
+async function loadSettings(){const s=(await api('/api/settings')).settings;$('#discordClientId').value=s.discordClientId||'';$('#discordGuildId').value=s.discordGuildId||'';$('#adminRoleId').value=s.adminRoleId||'';$('#repairRoleId').value=s.repairRoleId||'';$('#allowedChannelId').value=s.allowedChannelId||'';$('#radarrUrl').value=s.radarrUrl||'';$('#sonarrUrl').value=s.sonarrUrl||'';setDryRunState(s.dryRun!==false);$('#discordToken').placeholder=s.hasDiscordToken?'Saved — leave blank to keep':'Paste bot token';$('#radarrApiKey').placeholder=s.hasRadarrApiKey?'Saved — leave blank to keep':'Paste Radarr API key';$('#sonarrApiKey').placeholder=s.hasSonarrApiKey?'Saved — leave blank to keep':'Paste Sonarr API key';$('#passwordHint').textContent=s.authConfigured?'Leave blank unless changing the Web UI password.':'Minimum 10 characters. Required on first setup.';syncToWizard()}
+function render(j){const r=j.results||{};dot('#discordDot',!!r.discord?.ok);dot('#radarrDot',!!r.radarr?.ok);dot('#sonarrDot',!!r.sonarr?.ok);$('#discordStatus').textContent=r.discord?.detail||'Unknown';$('#radarrStatus').textContent=r.radarr?.detail||'Unknown';$('#sonarrStatus').textContent=r.sonarr?.detail||'Unknown';$('#safetyDot').className='dot '+(j.dryRun?'warn':'bad');$('#safetyStatus').textContent=j.dryRun?'DRY RUN — protected':'LIVE — deletion enabled';$('#botState').textContent=(j.bot?.state||'unknown')+' — '+(j.bot?.detail||'');$('#heroTitle').textContent=j.bot?.state==='online'?'MediaMedic is online.':'MediaMedic needs attention.';$('#heroText').textContent=j.bot?.state==='online'?'Discord commands are active and the repair pipeline is available.':'Review the connection cards and settings.'}
+async function refresh(){try{render(await api('/api/status'))}catch(e){$('#botState').textContent=e.message}}
+function showWizardStep(step){currentWizardStep=step;$$('.step-link').forEach(el=>el.classList.toggle('active',Number(el.dataset.step)===step));$$('.wizard-step').forEach(el=>el.classList.toggle('active',Number(el.dataset.step)===step));localStorage.setItem('mediamedic.wizardStep',String(step))}
+
+async function copyText(value){
+  const text=String(value??'');
+  if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true}
+  const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(!ok)throw new Error('Copy was blocked by this browser.');return true
+}
+async function copyImageToClipboard(){
+  const blob=await fetch('/logo-icon.png',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Could not load icon.');return r.blob()});
+  if(navigator.clipboard&&window.ClipboardItem&&window.isSecureContext){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);return 'Icon copied to clipboard.'}
+  const holder=document.createElement('div');holder.contentEditable='true';holder.style.position='fixed';holder.style.left='-9999px';const img=document.createElement('img');img.src='/logo-icon.png';holder.appendChild(img);document.body.appendChild(holder);await new Promise((resolve,reject)=>{if(img.complete)return resolve();img.onload=resolve;img.onerror=reject});const range=document.createRange();range.selectNode(img);const sel=getSelection();sel.removeAllRanges();sel.addRange(range);let ok=false;try{ok=document.execCommand('copy')}finally{sel.removeAllRanges();holder.remove()}if(ok)return 'Icon copied to clipboard.';const a=document.createElement('a');a.href='/logo-icon.png';a.download='MediaMedic-Discord-Icon.png';document.body.appendChild(a);a.click();a.remove();return 'Browser blocked image copy on HTTP, so the icon was downloaded instead.'
+}
+bindSync();
+$$('.tab').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+$('#openSettings').addEventListener('click',()=>tab('settings'));
+$('#openWizard').addEventListener('click',()=>tab('wizard'));
+$('#wizardOpenAdvanced').addEventListener('click',()=>tab('settings'));
+$('#helpDocsBtn').addEventListener('click',()=>window.open('https://discord.com/developers/docs/quick-start/getting-started','_blank','noopener'));
+$$('[data-show]').forEach(b=>b.addEventListener('click',()=>{const i=$('#'+b.dataset.show);i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'Show':'Hide'}));
+$('#dryRun').addEventListener('change',()=>setDryRunState($('#dryRun').checked));
+$('#wiz_dryRun').addEventListener('change',()=>setDryRunState($('#wiz_dryRun').checked));
+$$('.step-link').forEach(el=>el.addEventListener('click',()=>showWizardStep(Number(el.dataset.step))));
+$$('[data-next]').forEach(el=>el.addEventListener('click',()=>showWizardStep(Number(el.dataset.next))));
+$$('[data-prev]').forEach(el=>el.addEventListener('click',()=>showWizardStep(Number(el.dataset.prev))));
+$('#copyNameBtn').addEventListener('click',async()=>{try{await copyText($('#starterAppName').value);$('#nameCopyStatus').textContent='Application name copied.'}catch(e){$('#nameCopyStatus').textContent=e.message}});
+$('#copyDescriptionBtn').addEventListener('click',async()=>{try{await copyText($('#starterDescription').textContent.trim());$('#starterCopyStatus').textContent='Description copied.'}catch(e){$('#starterCopyStatus').textContent=e.message}});
+$('#copyTagsBtn').addEventListener('click',async()=>{try{await copyText($$('[data-tag]').map(x=>x.dataset.tag).join(', '));$('#starterCopyStatus').textContent='Tags copied.'}catch(e){$('#starterCopyStatus').textContent=e.message}});
+$$('[data-tag]').forEach(el=>el.addEventListener('click',async()=>{try{await copyText(el.dataset.tag);$('#starterCopyStatus').textContent=`Copied tag: ${el.dataset.tag}`}catch(e){$('#starterCopyStatus').textContent=e.message}}));
+$('#copyIconBtn').addEventListener('click',async()=>{const b=$('#copyIconBtn');b.disabled=true;const old=b.textContent;b.textContent='Copying…';try{$('#iconCopyStatus').textContent=await copyImageToClipboard()}catch(e){$('#iconCopyStatus').textContent=e.message}finally{b.disabled=false;b.textContent=old}});
+$('#refreshBtn').addEventListener('click',refresh);
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#loginPassword').value})});loginView.classList.add('hidden');appView.classList.remove('hidden');await loadSettings();await refresh();tab(localStorage.getItem('mediamedic.tab')||'dashboard');showWizardStep(Number(localStorage.getItem('mediamedic.wizardStep')||'1'))}catch(err){toast($('#loginError'),err.message,true)}});
+async function testConnections(btn,target){btn.disabled=true;const txt=btn.textContent;btn.textContent='Testing…';try{const j=await api('/api/test',{method:'POST',body:JSON.stringify(payload())});renderTests(target,j.results)}catch(e){toast(target===$('#wizardTestResults')?$('#wizardToast'):$('#formToast'),e.message,true)}finally{btn.disabled=false;btn.textContent=txt}}
+$('#testBtn').addEventListener('click',()=>testConnections($('#testBtn'),$('#testResults')));
+$('#wizardTestBtn').addEventListener('click',()=>testConnections($('#wizardTestBtn'),$('#wizardTestResults')));
+async function saveAll(btn,toastEl){btn.disabled=true;const txt=btn.textContent;btn.textContent='Saving…';try{await api('/api/settings',{method:'POST',body:JSON.stringify(payload())});toast(toastEl,'Settings saved. MediaMedic bot is restarting.');['uiPassword','discordToken','radarrApiKey','sonarrApiKey','liveConfirm','wiz_uiPassword','wiz_discordToken','wiz_radarrApiKey','wiz_sonarrApiKey','wiz_liveConfirm'].forEach(id=>{const el=$('#'+id);if(el)el.value=''})
+await loadSettings();setTimeout(refresh,1200)}catch(err){toast(toastEl,err.message,true)}finally{btn.disabled=false;btn.textContent=txt}}
+$('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();await saveAll($('#saveBtn'),$('#formToast'))});
+$('#wizardSaveBtn').addEventListener('click',async()=>saveAll($('#wizardSaveBtn'),$('#wizardToast')));
+$('#logoutBtn').addEventListener('click',async()=>{await api('/api/logout',{method:'POST',body:'{}'}).catch(()=>{});location.reload()});
+async function boot(){try{const b=await api('/api/bootstrap');$('#version').textContent='v'+b.version;$('#footerText').textContent=`MediaMedic v${b.version} · Web UI port 8787`;if(b.authRequired&&!b.authenticated){loginView.classList.remove('hidden');return}appView.classList.remove('hidden');await loadSettings();const savedTab=localStorage.getItem('mediamedic.tab');const wizardStep=Number(localStorage.getItem('mediamedic.wizardStep')||'1');showWizardStep(wizardStep);if(!b.authRequired){tab('wizard');toast($('#wizardToast'),'First-run setup: work through the wizard, test connections, then save.')}else{tab(savedTab||'dashboard')}await refresh()}catch(e){document.body.innerHTML='<div style="padding:30px;color:white">MediaMedic UI error: '+esc(e.message)+'</div>'}}
+boot();
+</script>
+</body>
+</html>

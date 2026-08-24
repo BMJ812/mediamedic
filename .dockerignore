@@ -1,0 +1,5 @@
+config
+.env
+.git
+*.zip
+node_modules

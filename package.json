@@ -1,0 +1,17 @@
+{
+  "name": "mediamedic",
+  "version": "0.4.2",
+  "private": true,
+  "description": "Discord-driven Radarr/Sonarr media repair bot with an Unraid Web UI",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "check": "node --check src/index.js && node --check src/web.js && node --check src/settings.js && node --check src/bot-main.js && node --check src/arr.js && node --check src/config.js && node --check src/db.js && node --check src/util.js && node --check src/commands.js && node --check src/release-history.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0"
+  }
+}

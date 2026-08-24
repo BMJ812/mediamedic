@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>MediaMedic</Name>
+  <Repository>ghcr.io/bmj812/mediamedic:latest</Repository>
+  <Registry>https://github.com/BMJ812/mediamedic/pkgs/container/mediamedic</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+
+  <Icon>https://raw.githubusercontent.com/BMJ812/mediamedic/main/icon.png</Icon>
+  <WebUI>http://[IP]:[PORT:8787]/</WebUI>
+
+  <Overview>MediaMedic is a Discord-driven media repair assistant for Radarr and Sonarr. Trusted users can report corrupt, incorrect, or otherwise bad movie and TV files from Discord. MediaMedic verifies the exact Radarr/Sonarr-managed file, can conservatively blocklist a proven bad release, removes the bad managed file, triggers a replacement search, and tracks download/import progress back to Discord. Configuration is handled through the built-in Web UI; no media filesystem mount is required.</Overview>
+
+  <Project>https://github.com/BMJ812/mediamedic</Project>
+  <Support>https://github.com/BMJ812/mediamedic/issues</Support>
+  <TemplateURL>https://raw.githubusercontent.com/BMJ812/mediamedic/main/templates/mediamedic.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/BMJ812/mediamedic/main/README.md</ReadMe>
+
+  <Category>MediaApp:Video Tools:Utilities</Category>
+  <ExtraSearchTerms>radarr sonarr discord media repair corrupt broken redownload re-download replacement blocklist</ExtraSearchTerms>
+  <Requires>Radarr and/or Sonarr must be reachable from the container. A Discord server is required for Discord repair commands. No direct media filesystem mount is required.</Requires>
+  <Changes>Initial Community Apps submission based on MediaMedic v0.4.2.</Changes>
+  <Date>2026-08-24</Date>
+  <License>Zlib</License>
+
+  <Config Name="Web UI Port" Target="8787" Default="8787" Mode="tcp" Description="HTTP port for the MediaMedic Web UI." Type="Port" Display="always" Required="true" Mask="false">8787</Config>
+  <Config Name="Appdata" Target="/config" Default="/mnt/user/appdata/mediamedic" Mode="rw" Description="Persistent MediaMedic settings, SQLite repair history, and tracking state." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mediamedic</Config>
+</Container>

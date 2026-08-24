@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>
+MediaMedic is a Discord-driven media repair assistant for Radarr and Sonarr. It lets trusted Discord users report broken or incorrect movie and TV files, confirm the exact managed file, blocklist a proven bad release when possible, remove it through the *arr API, trigger a replacement search, and track the replacement through download and import from a built-in Unraid Web UI.
+
+Support and source are maintained in the MediaMedic GitHub repository.
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/BMJ812/mediamedic/main/icon.png</Icon>
+  <WebPage>https://github.com/BMJ812/mediamedic</WebPage>
+  <Forum>https://github.com/BMJ812/mediamedic/issues</Forum>
+</CommunityApplications>
