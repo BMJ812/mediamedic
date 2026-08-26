@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { RadarrClient, SonarrClient } from "./arr.js";
@@ -13,14 +13,14 @@ import {
 } from "./settings.js";
 import { safeError } from "./util.js";
 
-const VERSION = "0.4.2";
+const VERSION = "0.4.3";
 const PORT = Number.parseInt(process.env.MEDIAMEDIC_WEB_PORT || "8787", 10);
 const HOST = process.env.MEDIAMEDIC_WEB_HOST || "0.0.0.0";
 const indexHtml = readFileSync(fileURLToPath(new URL("../public/index.html", import.meta.url)), "utf8");
 const logoIconPng = readFileSync(fileURLToPath(new URL("../public/logo-icon.png", import.meta.url)));
 const logoFullPng = readFileSync(fileURLToPath(new URL("../public/logo-full.png", import.meta.url)));
-const sessions = new Map();
 const SESSION_MS = 12 * 60 * 60 * 1000;
+const SESSION_VERSION = "v1";
 
 function json(res, status, body, headers = {}) {
   res.writeHead(status, {
@@ -52,22 +52,44 @@ function parseCookies(req) {
   return result;
 }
 
+function sessionSigningKey(settings) {
+  return `${settings.uiPasswordHash}:${settings.uiPasswordSalt}`;
+}
+
+function signSession(payload, settings) {
+  return createHmac("sha256", sessionSigningKey(settings)).update(payload).digest("base64url");
+}
+
 function sessionFor(req) {
   const token = parseCookies(req).mediamedic_session;
   if (!token) return undefined;
-  const expires = sessions.get(token);
-  if (!expires || Date.now() > expires) {
-    if (token) sessions.delete(token);
-    return undefined;
-  }
-  sessions.set(token, Date.now() + SESSION_MS);
+
+  const settings = loadSettings();
+  if (!hasUiPassword(settings)) return undefined;
+
+  const [version, expiresText, nonce, signature] = token.split(".");
+  if (version !== SESSION_VERSION || !expiresText || !nonce || !signature) return undefined;
+
+  const expires = Number(expiresText);
+  if (!Number.isFinite(expires) || Date.now() > expires) return undefined;
+
+  const payload = `${version}.${expiresText}.${nonce}`;
+  const expected = Buffer.from(signSession(payload, settings));
+  const actual = Buffer.from(signature);
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return undefined;
+
   return token;
 }
 
-function newSession() {
-  const token = randomBytes(32).toString("hex");
-  sessions.set(token, Date.now() + SESSION_MS);
-  return token;
+function newSession(settings = loadSettings()) {
+  if (!hasUiPassword(settings)) {
+    throw new Error("Cannot create a Web UI session before a password is configured.");
+  }
+
+  const expires = Date.now() + SESSION_MS;
+  const nonce = randomBytes(24).toString("base64url");
+  const payload = `${SESSION_VERSION}.${expires}.${nonce}`;
+  return `${payload}.${signSession(payload, settings)}`;
 }
 
 function sessionCookie(token) {
@@ -78,7 +100,7 @@ function requireAuth(req, res) {
   const settings = loadSettings();
   if (!hasUiPassword(settings)) return true;
   if (sessionFor(req)) return true;
-  json(res, 401, { ok: false, error: "Authentication required." });
+  json(res, 401, { ok: false, error: "Authentication required. Sign in again and retry; unsaved settings were not changed." });
   return false;
 }
 
@@ -183,13 +205,11 @@ export function startWebServer({ getBotState, restartBot }) {
         const settings = loadSettings();
         if (!hasUiPassword(settings)) return json(res, 409, { ok: false, error: "Web UI password has not been created yet." });
         if (!verifyPassword(body.password, settings)) return json(res, 401, { ok: false, error: "Incorrect password." });
-        const token = newSession();
+        const token = newSession(settings);
         return json(res, 200, { ok: true }, { "Set-Cookie": sessionCookie(token) });
       }
 
       if (req.method === "POST" && url.pathname === "/api/logout") {
-        const token = sessionFor(req);
-        if (token) sessions.delete(token);
         return json(res, 200, { ok: true }, {
           "Set-Cookie": "mediamedic_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
         });
@@ -232,8 +252,7 @@ export function startWebServer({ getBotState, restartBot }) {
 
         const saved = saveSettings(body, { preserveSecrets: true });
         const bot = await restartBot();
-        const headers = {};
-        if (firstRun) headers["Set-Cookie"] = sessionCookie(newSession());
+        const headers = { "Set-Cookie": sessionCookie(newSession(saved)) };
         return json(res, 200, { ok: true, settings: publicSettings(saved), bot }, headers);
       }
 
