@@ -13,7 +13,7 @@ import {
 } from "./settings.js";
 import { safeError } from "./util.js";
 
-const VERSION = "0.4.4";
+const VERSION = "0.4.3";
 const PORT = Number.parseInt(process.env.MEDIAMEDIC_WEB_PORT || "8787", 10);
 const HOST = process.env.MEDIAMEDIC_WEB_HOST || "0.0.0.0";
 const indexHtml = readFileSync(fileURLToPath(new URL("../public/index.html", import.meta.url)), "utf8");
@@ -134,132 +134,29 @@ function mergedCandidate(input) {
   };
 }
 
-const DISCORD_SNOWFLAKE = /^\d{17,20}$/;
-
-function validateDiscordIdShapes(settings) {
-  const fields = [
-    ["Application / Client ID", settings.discordClientId],
-    ["Server / Guild ID", settings.discordGuildId],
-    ["Admin Role ID", settings.adminRoleId],
-    ["Repair Role ID", settings.repairRoleId],
-    ["Allowed Channel ID", settings.allowedChannelId],
-  ];
-
-  for (const [label, value] of fields) {
-    if (value && !DISCORD_SNOWFLAKE.test(String(value))) {
-      throw new Error(`${label} must be a Discord numeric ID (17-20 digits).`);
-    }
-  }
-
-  if (settings.allowedChannelId && settings.allowedChannelId === settings.repairRoleId) {
-    throw new Error("Allowed Channel ID cannot be the same as Repair Role ID. The channel field must contain a Discord channel ID; the repair role field must contain a Discord role ID or be left blank.");
-  }
-
-  if (settings.allowedChannelId && settings.allowedChannelId === settings.adminRoleId) {
-    throw new Error("Allowed Channel ID cannot be the same as Admin Role ID. The channel field must contain a Discord channel ID; the admin role field must contain a Discord role ID or be left blank.");
-  }
-}
-
-async function discordResponseJson(response) {
-  return response.json().catch(() => ({}));
-}
-
-async function validateDiscordScope(settings) {
-  validateDiscordIdShapes(settings);
-
+async function testDiscord(settings) {
   if (!settings.discordToken) throw new Error("Discord bot token is missing.");
   if (!settings.discordGuildId) throw new Error("Discord server ID is missing.");
   if (!settings.discordClientId) throw new Error("Discord application/client ID is missing.");
 
   const headers = { Authorization: `Bot ${settings.discordToken}` };
+  const me = await fetch("https://discord.com/api/v10/users/@me", { headers });
+  if (!me.ok) throw new Error(`Discord authentication failed (${me.status}).`);
+  const user = await me.json();
 
-  const meResponse = await fetch("https://discord.com/api/v10/users/@me", { headers });
-  const user = await discordResponseJson(meResponse);
-  if (!meResponse.ok) throw new Error(`Discord authentication failed (${meResponse.status}).`);
+  const guild = await fetch(`https://discord.com/api/v10/guilds/${encodeURIComponent(settings.discordGuildId)}`, { headers });
+  if (!guild.ok) throw new Error(`Bot cannot access Discord server (${guild.status}).`);
+  const guildData = await guild.json();
 
-  if (String(user.id ?? "") !== String(settings.discordClientId)) {
-    throw new Error(
-      `Discord Application / Client ID ${settings.discordClientId} does not match the authenticated bot ${user.username ?? "unknown"} (${user.id ?? "unknown"}). Use the Application ID and bot token from the same Discord Developer Portal application.`,
-    );
-  }
-
-  const guildResponse = await fetch(
-    `https://discord.com/api/v10/guilds/${encodeURIComponent(settings.discordGuildId)}`,
-    { headers },
-  );
-  const guild = await discordResponseJson(guildResponse);
-  if (!guildResponse.ok) throw new Error(`Bot cannot access Discord server (${guildResponse.status}).`);
-
-  const roleById = new Map();
-  if (settings.repairRoleId || settings.adminRoleId) {
-    const rolesResponse = await fetch(
-      `https://discord.com/api/v10/guilds/${encodeURIComponent(settings.discordGuildId)}/roles`,
-      { headers },
-    );
-    const roles = await discordResponseJson(rolesResponse);
-    if (!rolesResponse.ok || !Array.isArray(roles)) {
-      throw new Error(`MediaMedic could not validate Discord roles in the configured server (${rolesResponse.status}).`);
-    }
-
-    for (const role of roles) roleById.set(String(role.id), role);
-
-    if (settings.repairRoleId && !roleById.has(settings.repairRoleId)) {
-      throw new Error(
-        `Repair Role ID ${settings.repairRoleId} is not a role in ${guild.name ?? "the configured Discord server"}. Clear the field or paste a role ID, not a channel ID.`,
-      );
-    }
-
-    if (settings.adminRoleId && !roleById.has(settings.adminRoleId)) {
-      throw new Error(
-        `Admin Role ID ${settings.adminRoleId} is not a role in ${guild.name ?? "the configured Discord server"}. Clear the field or paste a role ID, not a channel ID.`,
-      );
-    }
-  }
-
-  let channel;
-  if (settings.allowedChannelId) {
-    const channelResponse = await fetch(
-      `https://discord.com/api/v10/channels/${encodeURIComponent(settings.allowedChannelId)}`,
-      { headers },
-    );
-    channel = await discordResponseJson(channelResponse);
-
-    if (!channelResponse.ok) {
-      throw new Error(
-        `Allowed Channel ID ${settings.allowedChannelId} is not a channel MediaMedic can access (${channelResponse.status}). Paste the target channel ID and make sure the bot has View Channel permission there.`,
-      );
-    }
-
-    if (String(channel.guild_id ?? "") !== String(settings.discordGuildId)) {
-      throw new Error(
-        `Allowed Channel ID ${settings.allowedChannelId} belongs to a different Discord server.`,
-      );
-    }
-
-    if (Number(channel.type) === 4) {
-      throw new Error("Allowed Channel ID points to a category. Select the actual text/channel destination instead.");
-    }
-  }
-
-  const repairRole = settings.repairRoleId ? roleById.get(settings.repairRoleId) : undefined;
-  const adminRole = settings.adminRoleId ? roleById.get(settings.adminRoleId) : undefined;
-
-  return { user, guild, channel, repairRole, adminRole };
-}
-
-async function testDiscord(settings) {
-  const scope = await validateDiscordScope(settings);
-  const channelDetail = scope.channel
-    ? ` — channel #${scope.channel.name ?? scope.channel.id} (${scope.channel.id})`
-    : " — all guild channels";
-  const repairRoleDetail = scope.repairRole
-    ? ` — repair role @${scope.repairRole.name}`
-    : " — repair role unrestricted";
-  const adminRoleDetail = scope.adminRole
-    ? ` — admin role @${scope.adminRole.name}`
+  // Do not use GET /channels/{id} as a connectivity test. Discord can return
+  // 403 when the bot user itself lacks View Channel even though guild-scoped
+  // application commands and interactions are working normally in that channel.
+  // MediaMedic's channel lock is enforced by matching interaction.channelId.
+  const channelDetail = settings.allowedChannelId
+    ? ` — channel lock ${settings.allowedChannelId}`
     : "";
 
-  return `${scope.user.username} — ${scope.guild.name}${channelDetail}${repairRoleDetail}${adminRoleDetail}`;
+  return `${user.username} — ${guildData.name}${channelDetail}`;
 }
 
 async function testAll(settings) {
@@ -352,9 +249,6 @@ export function startWebServer({ getBotState, restartBot }) {
         if (body.dryRun === false && body.liveConfirm !== "LIVE") {
           throw new Error("Type LIVE in the confirmation field before disabling Dry Run.");
         }
-
-        const candidate = mergedCandidate(body);
-        await validateDiscordScope(candidate);
 
         const saved = saveSettings(body, { preserveSecrets: true });
         const bot = await restartBot();

@@ -22,6 +22,8 @@ const DEFAULTS = {
   uiPasswordSalt: "",
 };
 
+const DISCORD_SNOWFLAKE = /^\d{17,20}$/;
+
 function trimSlash(value) {
   return String(value ?? "").trim().replace(/\/+$/, "");
 }
@@ -52,6 +54,34 @@ function readFileSettings() {
   } catch (error) {
     console.error(`Unable to read ${SETTINGS_PATH}:`, error);
     return {};
+  }
+}
+
+function validateDiscordIdFields(settings) {
+  const fields = [
+    ["Application / Client ID", settings.discordClientId],
+    ["Server / Guild ID", settings.discordGuildId],
+    ["Admin Role ID", settings.adminRoleId],
+    ["Repair Role ID", settings.repairRoleId],
+    ["Allowed Channel ID", settings.allowedChannelId],
+  ];
+
+  for (const [label, value] of fields) {
+    if (value && !DISCORD_SNOWFLAKE.test(String(value))) {
+      throw new Error(`${label} must be a Discord numeric ID (17-20 digits).`);
+    }
+  }
+
+  if (settings.allowedChannelId && settings.allowedChannelId === settings.repairRoleId) {
+    throw new Error(
+      "Allowed Channel ID cannot be the same as Repair Role ID. Paste the channel ID into Allowed Channel ID and a role ID into Repair Role ID, or leave Repair Role ID blank.",
+    );
+  }
+
+  if (settings.allowedChannelId && settings.allowedChannelId === settings.adminRoleId) {
+    throw new Error(
+      "Allowed Channel ID cannot be the same as Admin Role ID. Paste the channel ID into Allowed Channel ID and a role ID into Admin Role ID, or leave Admin Role ID blank.",
+    );
   }
 }
 
@@ -131,6 +161,8 @@ export function saveSettings(input, { preserveSecrets = true } = {}) {
     next.uiPasswordSalt = salt;
     next.uiPasswordHash = hash;
   }
+
+  validateDiscordIdFields(next);
 
   mkdirSync(dirname(SETTINGS_PATH), { recursive: true });
   writeFileSync(SETTINGS_PATH, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });

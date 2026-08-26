@@ -1,6 +1,6 @@
 {
   "name": "mediamedic",
-  "version": "0.4.4",
+  "version": "0.4.3",
   "private": true,
   "description": "Discord-driven Radarr/Sonarr media repair bot with an Unraid Web UI",
   "type": "module",
