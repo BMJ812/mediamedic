@@ -38,7 +38,7 @@ export const repairCommand = new SlashCommandBuilder()
         return opt;
       })
       .addStringOption((opt) => opt.setName("note").setDescription("Optional details").setMaxLength(500)),
-  );
+  )
   .addSubcommand((sub) =>
     sub
       .setName("season")
