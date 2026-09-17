@@ -20,6 +20,7 @@ export class RepairDatabase {
         note TEXT,
         arr_id INTEGER NOT NULL,
         file_id INTEGER NOT NULL,
+        file_ids TEXT,
         episode_ids TEXT,
         season_number INTEGER,
         episode_number INTEGER,
@@ -33,6 +34,7 @@ export class RepairDatabase {
       );
     `);
 
+    this.ensureColumn("file_ids", "TEXT");
     this.ensureColumn("tracking_message_id", "TEXT");
     this.ensureColumn("tracking_started_at", "TEXT");
     this.ensureColumn("tracking_detail", "TEXT");
@@ -65,12 +67,13 @@ export class RepairDatabase {
     this.db.prepare(`
       INSERT INTO repairs (
         id, kind, requester_id, requester_tag, guild_id, channel_id, title, reason, note,
-        arr_id, file_id, episode_ids, season_number, episode_number, file_path, quality,
+        arr_id, file_id, file_ids, episode_ids, season_number, episode_number, file_path, quality,
         file_size, status, created_at, updated_at, error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       row.id, row.kind, row.requesterId, row.requesterTag, row.guildId, row.channelId,
       row.title, row.reason, row.note ?? null, row.arrId, row.fileId,
+      row.fileIds ? JSON.stringify(row.fileIds) : null,
       row.episodeIds ? JSON.stringify(row.episodeIds) : null,
       row.seasonNumber ?? null, row.episodeNumber ?? null, row.filePath ?? null,
       row.quality ?? null, row.fileSize ?? null, row.status, row.createdAt, row.updatedAt, null,
@@ -172,6 +175,7 @@ export class RepairDatabase {
       note: row.note == null ? undefined : String(row.note),
       arrId: Number(row.arr_id),
       fileId: Number(row.file_id),
+      fileIds: row.file_ids ? JSON.parse(String(row.file_ids)) : undefined,
       episodeIds: row.episode_ids ? JSON.parse(String(row.episode_ids)) : undefined,
       seasonNumber: row.season_number == null ? undefined : Number(row.season_number),
       episodeNumber: row.episode_number == null ? undefined : Number(row.episode_number),
