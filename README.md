@@ -2,11 +2,11 @@
 
 MediaMedic is a Discord-driven media repair assistant for **Radarr** and **Sonarr**, designed to run cleanly on **Unraid**.
 
-Users with permission can report a bad movie or TV episode from Discord. MediaMedic resolves the exact managed Radarr/Sonarr file, shows the user what it found, requires explicit confirmation, and then handles the repair through the *arr APIs rather than receiving direct delete access to your media filesystem.
+Users with permission can report a bad movie, TV episode, or entire TV season from Discord. MediaMedic resolves the exact managed Radarr/Sonarr file, shows the user what it found, requires explicit confirmation, and then handles the repair through the *arr APIs rather than receiving direct delete access to your media filesystem.
 
 ## Features
 
-- Discord `/repair movie` and `/repair episode` workflows
+- Discord `/repair movie`, `/repair episode`, and `/repair season` workflows
 - Radarr and Sonarr autocomplete
 - Exact managed-file verification before deletion
 - Dry Run safety mode
