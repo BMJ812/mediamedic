@@ -101,13 +101,39 @@ function actionRows(requestId, disabled = false) {
   ];
 }
 
+function seasonName(seasonNumber) {
+  return Number(seasonNumber) === 0 ? "Specials" : `Season ${seasonNumber}`;
+}
+
+function summarizeEpisodeFiles(files) {
+  const unique = [...new Map((files ?? []).filter(Boolean).map((file) => [Number(file.id), file])).values()];
+  const qualities = [...new Set(unique.map((file) => qualityName(file)).filter(Boolean))];
+  return {
+    fileId: unique[0]?.id,
+    fileIds: unique.map((file) => Number(file.id)),
+    filePath: `${unique.length} Sonarr-managed file${unique.length === 1 ? "" : "s"}`,
+    quality: qualities.length === 1 ? qualities[0] : "Mixed",
+    fileSize: unique.reduce((total, file) => total + Number(file.size ?? 0), 0),
+  };
+}
+
+function sameIdSet(left, right) {
+  const a = new Set((left ?? []).map(Number));
+  const b = new Set((right ?? []).map(Number));
+  return a.size === b.size && [...a].every((id) => b.has(id));
+}
 function requestEmbed(request, footer) {
+  const type = request.kind === "movie" ? "Movie" : request.kind === "season" ? "TV season" : "TV episode";
   const lines = [
-    `**Type:** ${request.kind === "movie" ? "Movie" : "TV episode"}`,
+    `**Type:** ${type}`,
     `**Title:** ${request.title}`,
   ];
   if (request.kind === "episode") {
     lines.push(`**Episode:** S${String(request.seasonNumber).padStart(2, "0")}E${String(request.episodeNumber).padStart(2, "0")}`);
+  } else if (request.kind === "season") {
+    lines.push(`**Season:** ${seasonName(request.seasonNumber)}`);
+    lines.push(`**Episodes affected:** ${request.episodeIds?.length ?? 0}`);
+    lines.push(`**Files to replace:** ${request.fileIds?.length ?? 1}`);
   }
   lines.push(
     `**Reason:** ${request.reason}`,
@@ -116,7 +142,7 @@ function requestEmbed(request, footer) {
     `**File:** \`${request.filePath ?? "Unknown"}\``,
   );
   if (request.note) lines.push(`**Note:** ${request.note}`);
-  if ((request.episodeIds?.length ?? 0) > 1) {
+  if (request.kind === "episode" && (request.episodeIds?.length ?? 0) > 1) {
     lines.push(`\n⚠️ **Multi-episode file:** this physical file maps to ${request.episodeIds.length} Sonarr episodes. Confirming removes the shared file and searches all mapped episodes.`);
   }
 
@@ -153,7 +179,7 @@ async function autocomplete(interaction) {
         name: `${m.title}${m.year ? ` (${m.year})` : ""}`.slice(0, 100),
         value: `id:${m.id}`,
       })));
-    } else if (sub === "episode") {
+    } else if (sub === "episode" || sub === "season") {
       const series = bestTitleMatches(cachedAutocompleteItems("series"), query);
       await interaction.respond(series.map((s) => ({
         name: `${s.title}${s.year ? ` (${s.year})` : ""}`.slice(0, 100),
@@ -234,7 +260,7 @@ async function handleRepair(interaction) {
         quality: qualityName(file),
         fileSize: file.size,
       });
-    } else {
+    } else if (sub === "episode") {
       const series = await resolveSeries(titleValue);
       const season = interaction.options.getInteger("season", true);
       const episodeNumber = interaction.options.getInteger("episode", true);
@@ -260,6 +286,41 @@ async function handleRepair(interaction) {
         filePath: file.relativePath ?? file.path,
         quality: qualityName(file),
         fileSize: file.size,
+      });
+    } else {
+      const series = await resolveSeries(titleValue);
+      const season = interaction.options.getInteger("season", true);
+      const episodes = await sonarr.getEpisodes(series.id);
+      const seasonEpisodes = episodes.filter((episode) => Number(episode.seasonNumber) === Number(season));
+      if (!seasonEpisodes.length) throw new Error(`${series.title} ${seasonName(season)} does not exist in Sonarr.`);
+
+      const episodesWithFiles = seasonEpisodes.filter((episode) => episode.hasFile && episode.episodeFileId);
+      if (!episodesWithFiles.length) throw new Error(`${series.title} ${seasonName(season)} does not currently have any Sonarr-managed files to replace.`);
+
+      const fileIds = [...new Set(episodesWithFiles.map((episode) => Number(episode.episodeFileId)))];
+      const files = await Promise.all(fileIds.map((id) => sonarr.getEpisodeFile(id)));
+      const selectedEpisodeIds = episodesWithFiles.map((episode) => Number(episode.id));
+      const mappedEpisodeIds = files.flatMap((file) => Array.isArray(file.episodeIds) ? file.episodeIds.map(Number) : []);
+      const episodeIds = [...new Set([...selectedEpisodeIds, ...mappedEpisodeIds])];
+      const summary = summarizeEpisodeFiles(files);
+
+      request = db.create({
+        kind: "season",
+        requesterId: interaction.user.id,
+        requesterTag: interaction.user.tag,
+        guildId: interaction.guildId,
+        channelId: interaction.channelId,
+        title: `${series.title}${series.year ? ` (${series.year})` : ""}`,
+        reason,
+        note,
+        arrId: series.id,
+        fileId: summary.fileId,
+        fileIds: summary.fileIds,
+        episodeIds,
+        seasonNumber: season,
+        filePath: summary.filePath,
+        quality: summary.quality,
+        fileSize: summary.fileSize,
       });
     }
 
@@ -348,6 +409,56 @@ async function identifyAndBlocklist(request, file, { seriesId } = {}) {
   return result;
 }
 
+async function identifyAndBlocklistSeason(request, files, seriesId) {
+  const history = await sonarr.seriesHistory(seriesId);
+  const matches = [];
+  let unmatched = 0;
+
+  for (const file of files) {
+    const match = findOriginalGrab(history, file);
+    if (match.matched) matches.push(match);
+    else unmatched += 1;
+  }
+
+  const uniqueMatches = [...new Map(matches.map((match) => [Number(match.historyId), match])).values()];
+  if (!uniqueMatches.length) {
+    const result = {
+      status: config.dryRun ? "DRY_RUN_SKIPPED" : "SKIPPED",
+      detail: "MediaMedic could not prove the original grabbed release for any season file, so it refused to guess at blocklist entries.",
+    };
+    db.setBlocklistResult(request.id, result);
+    return result;
+  }
+
+  const sourceTitle = uniqueMatches.length === 1 ? uniqueMatches[0].sourceTitle : `${uniqueMatches.length} releases`;
+  if (config.dryRun) {
+    const result = {
+      status: unmatched ? "DRY_RUN_PARTIAL" : "DRY_RUN_MATCH",
+      sourceTitle,
+      detail: `DRY RUN: would blocklist ${uniqueMatches.length} proven release${uniqueMatches.length === 1 ? "" : "s"}; ${unmatched} season file${unmatched === 1 ? "" : "s"} had no proven history match.`,
+    };
+    db.setBlocklistResult(request.id, result);
+    return result;
+  }
+
+  for (const match of uniqueMatches) {
+    try {
+      await sonarr.markHistoryFailed(match.historyId);
+    } catch (error) {
+      const detail = `MediaMedic identified ${match.sourceTitle} (history ${match.historyId}) but Sonarr refused the blocklist operation: ${safeError(error)}`;
+      db.setBlocklistResult(request.id, { status: "FAILED", historyId: match.historyId, sourceTitle: match.sourceTitle, detail });
+      throw new Error(`${detail}. The season files were NOT deleted.`);
+    }
+  }
+
+  const result = {
+    status: unmatched ? "PARTIAL" : "BLOCKLISTED",
+    sourceTitle,
+    detail: `Blocklisted ${uniqueMatches.length} proven release${uniqueMatches.length === 1 ? "" : "s"}; ${unmatched} season file${unmatched === 1 ? "" : "s"} had no proven history match.`,
+  };
+  db.setBlocklistResult(request.id, result);
+  return result;
+}
 async function performRepair(request) {
   if (request.kind === "movie") {
     const movie = await radarr.getMovie(request.arrId);
@@ -359,6 +470,38 @@ async function performRepair(request) {
     if (!config.dryRun) {
       await radarr.deleteMovieFile(request.fileId);
       await radarr.searchMovie(request.arrId);
+    }
+    return db.get(request.id);
+  }
+
+  if (request.kind === "season") {
+    const expectedFileIds = (request.fileIds?.length ? request.fileIds : [request.fileId]).map(Number);
+    const targetIds = (request.episodeIds ?? []).map(Number);
+    if (!targetIds.length || !expectedFileIds.length) throw new Error("Season repair snapshot is incomplete. Refusing repair.");
+
+    const episodes = await sonarr.getEpisodes(request.arrId);
+    const targetSet = new Set(targetIds);
+    const targetEpisodes = episodes.filter((episode) => targetSet.has(Number(episode.id)));
+    if (targetEpisodes.length !== targetSet.size) throw new Error("The selected season changed in Sonarr since this request was created. Refusing to delete files.");
+    if (targetEpisodes.some((episode) => !episode.hasFile || !episode.episodeFileId)) throw new Error("One or more season files changed or disappeared since this request was created. Refusing to delete files.");
+
+    const currentFileIds = [...new Set(targetEpisodes.map((episode) => Number(episode.episodeFileId)))];
+    if (!sameIdSet(currentFileIds, expectedFileIds)) throw new Error("The season file set changed since this request was created. Refusing to delete files.");
+
+    const files = await Promise.all(expectedFileIds.map((id) => sonarr.getEpisodeFile(id)));
+    for (const file of files) {
+      const mappedIds = Array.isArray(file.episodeIds) ? file.episodeIds.map(Number) : [];
+      if (mappedIds.length && !mappedIds.some((id) => targetSet.has(id))) throw new Error("Episode-file ownership changed. Refusing season repair.");
+    }
+
+    await identifyAndBlocklistSeason(request, files, request.arrId);
+    if (!config.dryRun) {
+      for (const fileId of expectedFileIds) await sonarr.deleteEpisodeFile(fileId);
+      await sonarr.searchSeason(request.arrId, request.seasonNumber);
+      const extraEpisodeIds = targetEpisodes
+        .filter((episode) => Number(episode.seasonNumber) !== Number(request.seasonNumber))
+        .map((episode) => Number(episode.id));
+      if (extraEpisodeIds.length) await sonarr.searchEpisodes(extraEpisodeIds);
     }
     return db.get(request.id);
   }
@@ -406,12 +549,16 @@ function blocklistLine(request) {
   switch (request.blocklistStatus) {
     case "BLOCKLISTED":
       return `✅ Original release blocklisted${request.blocklistSourceTitle ? ` — \`${request.blocklistSourceTitle}\`` : ""}`;
+    case "PARTIAL":
+      return "⚠️ Some proven season releases were blocklisted; one or more files had no exact history match";
     case "SKIPPED":
       return "⚠️ Original release not blocklisted — exact history match was not proven";
     case "FAILED":
       return "❌ Original release blocklist failed — repair was stopped before file deletion";
     case "DRY_RUN_MATCH":
       return `🧪 DRY RUN would blocklist${request.blocklistSourceTitle ? ` — \`${request.blocklistSourceTitle}\`` : " the matched release"}`;
+    case "DRY_RUN_PARTIAL":
+      return "🧪 DRY RUN found proven releases to blocklist, plus season files with no exact history match";
     case "DRY_RUN_SKIPPED":
       return "🧪 DRY RUN found no exact release-history match to blocklist";
     default:
@@ -433,7 +580,7 @@ function trackingEmbed(request, state) {
 
   const lines = [
     `**Item:** ${request.title}`,
-    request.kind === "episode" ? `**Episode:** S${String(request.seasonNumber).padStart(2, "0")}E${String(request.episodeNumber).padStart(2, "0")}` : undefined,
+    request.kind === "episode" ? `**Episode:** S${String(request.seasonNumber).padStart(2, "0")}E${String(request.episodeNumber).padStart(2, "0")}` : request.kind === "season" ? `**Season:** ${seasonName(request.seasonNumber)} • ${request.episodeIds?.length ?? 0} affected episodes • ${request.fileIds?.length ?? 1} original files` : undefined,
     `**Reported problem:** ${request.reason}`,
     "",
     blocklistLine(request),
@@ -556,6 +703,36 @@ async function inspectTrackedRepair(request) {
     }
   }
 
+  if (request.kind === "season") {
+    const ids = request.episodeIds?.length ? request.episodeIds.map(Number) : [];
+    const oldFileIds = new Set((request.fileIds?.length ? request.fileIds : [request.fileId]).map(Number));
+    const episodes = await Promise.all(ids.map((id) => sonarr.getEpisode(id)));
+    const restored = episodes.length > 0 && episodes.every((episode) =>
+      episode.hasFile && episode.episodeFileId && !oldFileIds.has(Number(episode.episodeFileId)),
+    );
+    if (restored) {
+      const newFileIds = [...new Set(episodes.map((episode) => Number(episode.episodeFileId)))];
+      const files = await Promise.all(newFileIds.map((id) => sonarr.getEpisodeFile(id)));
+      const summary = summarizeEpisodeFiles(files);
+      return {
+        stage: "IMPORTED",
+        key: "IMPORTED",
+        replacement: {
+          fileId: summary.fileId,
+          filePath: summary.filePath,
+          quality: summary.quality,
+          fileSize: summary.fileSize,
+        },
+      };
+    }
+    try {
+      return queueState(await sonarr.findQueueItem(ids));
+    } catch (error) {
+      console.warn(`Sonarr queue check failed for ${request.id}:`, safeError(error));
+      return { stage: "SEARCHING", key: "SEARCHING" };
+    }
+  }
+
   const ids = request.episodeIds?.length ? request.episodeIds : [request.arrId];
   const episodes = await Promise.all(ids.map((id) => sonarr.getEpisode(id)));
   const restored = episodes.every((episode) => episode.hasFile && episode.episodeFileId && Number(episode.episodeFileId) !== Number(request.fileId));
@@ -655,8 +832,10 @@ async function handleButton(interaction) {
       const checked = await performRepair(request);
       const updated = db.updateStatus(id, "DRY_RUN");
       const blocklistNote = checked?.blocklistStatus === "DRY_RUN_MATCH"
-        ? ` Original release match found; LIVE mode would blocklist: ${checked.blocklistSourceTitle}.`
-        : " No exact original-release history match was proven, so MediaMedic would not guess at a blocklist entry.";
+        ? ` Proven release match found; LIVE mode would blocklist: ${checked.blocklistSourceTitle}.`
+        : checked?.blocklistStatus === "DRY_RUN_PARTIAL"
+          ? ` Some season releases were proven and would be blocklisted; unmatched files would be left unguessed. ${checked.blocklistDetail ?? ""}`
+          : " No exact original-release history match was proven, so MediaMedic would not guess at a blocklist entry.";
       return interaction.editReply({
         embeds: [requestEmbed(updated, `DRY RUN verified successfully by ${interaction.user.tag}. No file was deleted and no search was started.${blocklistNote}`)],
         components: actionRows(id, true),
