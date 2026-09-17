@@ -95,6 +95,13 @@ export class SonarrClient extends ArrClient {
     });
   }
 
+  searchSeason(seriesId, seasonNumber) {
+    return this.request("/api/v3/command", {
+      method: "POST",
+      body: JSON.stringify({ name: "SeasonSearch", seriesId, seasonNumber }),
+    });
+  }
+
   async seriesHistory(seriesId) {
     try {
       return this.historyRecords(await this.request(`/api/v3/history/series?seriesId=${encodeURIComponent(seriesId)}&includeSeries=false&includeEpisode=true`));
